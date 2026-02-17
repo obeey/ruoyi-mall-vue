@@ -32,6 +32,8 @@ module.exports = {
     host: '0.0.0.0',
     port: port,
     open: true,
+    // 配置 WebSocket 连接的公开访问地址
+    public: process.env.VUE_APP_PUBLIC_PATH || undefined,
     proxy: {
       // detail: https://cli.vuejs.org/config/#devserver-proxy
       [process.env.VUE_APP_BASE_API]: {
