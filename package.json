@@ -1,8 +1,8 @@
 {
   "name": "ruoyi-ui-merge",
   "version": "3.8.3",
-  "description": "ruoyi-mall商城管理系统",
-  "author": "若依",
+  "description": "AI便利店管理系统",
+  "author": "Nico",
   "license": "MIT",
   "scripts": {
     "dev": "NODE_OPTIONS=--openssl-legacy-provider vue-cli-service serve",
