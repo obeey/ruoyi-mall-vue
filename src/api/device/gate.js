@@ -8,3 +8,12 @@ export function controlGate(data) {
     data: data
   })
 }
+
+// 下发闸机人员人脸配置
+export function insertGatePerson(data) {
+  return request({
+    url: '/device/gate/person/insert',
+    method: 'post',
+    data: data
+  })
+}
