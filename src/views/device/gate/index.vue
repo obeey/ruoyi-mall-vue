@@ -1,52 +1,52 @@
 <template>
   <div class="app-container">
     <el-row :gutter="20">
-      <el-col :xs="24" :sm="24" :md="14" :lg="12">
+      <el-col :xs="24" :sm="24" :md="12">
         <el-card shadow="hover">
           <div slot="header" class="clearfix">
-            <span>闸机控制</span>
+            <span>Entry Gate Control</span>
           </div>
 
           <el-form
-            ref="form"
-            :model="form"
+            ref="entryForm"
+            :model="entryForm"
             :rules="rules"
-            label-width="90px"
+            label-width="100px"
             class="gate-form"
           >
-            <el-form-item label="设备 ID" prop="deviceId">
+            <el-form-item label="Device ID" prop="deviceId">
               <el-input
-                v-model.trim="form.deviceId"
-                placeholder="请输入闸机设备ID，例如 R71SA52720001"
+                v-model.trim="entryForm.deviceId"
+                placeholder="Input entry gate device ID"
                 clearable
-                @keyup.enter.native="handleControl('open')"
+                @keyup.enter.native="handleControl('entry', 'open')"
               />
             </el-form-item>
 
-            <el-form-item label="控制动作">
+            <el-form-item label="Action">
               <el-button
                 v-hasPermi="['device:gate:control']"
                 type="primary"
                 icon="el-icon-unlock"
-                :loading="submitting && form.action === 'open'"
-                @click="handleControl('open')"
+                :loading="submitting.entry && entryForm.action === 'open'"
+                @click="handleControl('entry', 'open')"
               >
-                开闸
+                Open
               </el-button>
               <el-button
                 v-hasPermi="['device:gate:control']"
                 type="warning"
                 icon="el-icon-lock"
-                :loading="submitting && form.action === 'close'"
-                @click="handleControl('close')"
+                :loading="submitting.entry && entryForm.action === 'close'"
+                @click="handleControl('entry', 'close')"
               >
-                关闸
+                Close
               </el-button>
             </el-form-item>
           </el-form>
 
           <el-alert
-            title="当前页面用于后台人工测试控闸，设备必须已通过 WebSocket 在线连接到服务端。"
+            title="Entry gate keeps using the current WebSocket control chain."
             type="info"
             :closable="false"
             show-icon
@@ -54,41 +54,76 @@
         </el-card>
       </el-col>
 
-      <el-col :xs="24" :sm="24" :md="10" :lg="12">
+      <el-col :xs="24" :sm="24" :md="12">
         <el-card shadow="hover">
           <div slot="header" class="clearfix">
-            <span>最近结果</span>
+            <span>Exit Gate Control</span>
           </div>
 
-          <el-descriptions v-if="lastResult" :column="1" border>
-            <el-descriptions-item label="设备 ID">
-              {{ lastResult.deviceId || '-' }}
-            </el-descriptions-item>
-            <el-descriptions-item label="动作">
-              {{ formatAction(lastResult.action) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="是否在线">
-              <el-tag :type="lastResult.online ? 'success' : 'danger'" size="small">
-                {{ lastResult.online ? '在线' : '离线' }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="下发方法">
-              {{ lastResult.commandMethod || '-' }}
-            </el-descriptions-item>
-            <el-descriptions-item label="请求 ID">
-              {{ lastResult.reqId || '-' }}
-            </el-descriptions-item>
-            <el-descriptions-item label="结果">
-              <el-tag :type="lastResult.accepted ? 'success' : 'danger'" size="small">
-                {{ lastResult.accepted ? '已下发' : '未下发' }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="消息">
-              {{ lastResult.message || '-' }}
-            </el-descriptions-item>
-          </el-descriptions>
+          <el-form
+            ref="exitForm"
+            :model="exitForm"
+            :rules="rules"
+            label-width="100px"
+            class="gate-form"
+          >
+            <el-form-item label="Device ID" prop="deviceId">
+              <el-input
+                v-model.trim="exitForm.deviceId"
+                placeholder="Input device ID linked to ai-store-host"
+                clearable
+                @keyup.enter.native="handleControl('exit', 'open')"
+              />
+            </el-form-item>
 
-          <el-empty v-else description="尚未执行控闸操作" :image-size="90" />
+            <el-form-item label="Action">
+              <el-button
+                v-hasPermi="['device:gate:control']"
+                type="primary"
+                icon="el-icon-unlock"
+                :loading="submitting.exit && exitForm.action === 'open'"
+                @click="handleControl('exit', 'open')"
+              >
+                Open
+              </el-button>
+              <el-button
+                v-hasPermi="['device:gate:control']"
+                type="warning"
+                icon="el-icon-lock"
+                :loading="submitting.exit && exitForm.action === 'close'"
+                @click="handleControl('exit', 'close')"
+              >
+                Lock
+              </el-button>
+            </el-form-item>
+          </el-form>
+
+          <el-alert
+            title="Exit gate command is routed through cloud, current host WebSocket tunnel, and local RS485 converter."
+            type="success"
+            :closable="false"
+            show-icon
+          />
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="20" class="result-row">
+      <el-col :xs="24" :sm="24" :md="12">
+        <el-card shadow="hover">
+          <div slot="header" class="clearfix">
+            <span>Entry Gate Result</span>
+          </div>
+          <gate-result :result="lastResult.entry" :format-action="formatAction" :format-side="formatSide" />
+        </el-card>
+      </el-col>
+
+      <el-col :xs="24" :sm="24" :md="12">
+        <el-card shadow="hover">
+          <div slot="header" class="clearfix">
+            <span>Exit Gate Result</span>
+          </div>
+          <gate-result :result="lastResult.exit" :format-action="formatAction" :format-side="formatSide" />
         </el-card>
       </el-col>
     </el-row>
@@ -98,55 +133,135 @@
 <script>
 import { controlGate } from '@/api/device/gate'
 
+const GateResult = {
+  name: 'GateResult',
+  props: {
+    result: {
+      type: Object,
+      default: null
+    },
+    formatAction: {
+      type: Function,
+      required: true
+    },
+    formatSide: {
+      type: Function,
+      required: true
+    }
+  },
+  template: `
+    <div>
+      <el-empty v-if="!result" description="No command executed yet" :image-size="90" />
+      <el-descriptions v-else :column="1" border>
+        <el-descriptions-item label="Device ID">
+          {{ result.deviceId || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="Gate Side">
+          {{ formatSide(result.gateSide) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="Action">
+          {{ formatAction(result.action) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="Online">
+          <el-tag :type="result.online ? 'success' : 'danger'" size="small">
+            {{ result.online ? 'Online' : 'Offline' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="Method">
+          {{ result.commandMethod || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="Request ID">
+          {{ result.reqId || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="Accepted">
+          <el-tag :type="result.accepted ? 'success' : 'danger'" size="small">
+            {{ result.accepted ? 'Yes' : 'No' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="Message">
+          {{ result.message || '-' }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </div>
+  `
+}
+
 export default {
   name: 'DeviceGate',
+  components: {
+    GateResult
+  },
   data() {
     return {
-      submitting: false,
-      form: {
-        deviceId: '',
-        action: ''
+      submitting: {
+        entry: false,
+        exit: false
       },
-      lastResult: null,
+      entryForm: {
+        deviceId: '',
+        action: '',
+        gateSide: 'entry'
+      },
+      exitForm: {
+        deviceId: '',
+        action: '',
+        gateSide: 'exit'
+      },
+      lastResult: {
+        entry: null,
+        exit: null
+      },
       rules: {
         deviceId: [
-          { required: true, message: '请输入闸机设备ID', trigger: 'blur' }
+          { required: true, message: 'Please input device ID', trigger: 'blur' }
         ]
       }
     }
   },
   methods: {
-    handleControl(action) {
-      this.form.action = action
-      this.$refs.form.validate(valid => {
+    handleControl(gateSide, action) {
+      const formRef = gateSide === 'exit' ? 'exitForm' : 'entryForm'
+      const form = gateSide === 'exit' ? this.exitForm : this.entryForm
+      form.action = action
+      this.$refs[formRef].validate(valid => {
         if (!valid) {
           return
         }
-        this.submitting = true
+        this.submitting[gateSide] = true
         controlGate({
-          deviceId: this.form.deviceId,
-          action: action
+          deviceId: form.deviceId,
+          action,
+          gateSide
         }).then(response => {
-          this.lastResult = response.data
-          this.$modal.msgSuccess(response.msg || '操作成功')
+          this.lastResult[gateSide] = response.data
+          this.$modal.msgSuccess(response.msg || 'Success')
         }).catch(error => {
           const response = error && error.response && error.response.data
           if (response && response.data) {
-            this.lastResult = response.data
+            this.lastResult[gateSide] = response.data
           }
         }).finally(() => {
-          this.submitting = false
+          this.submitting[gateSide] = false
         })
       })
     },
     formatAction(action) {
       if (action === 'open') {
-        return '开闸'
+        return 'Open'
       }
       if (action === 'close') {
-        return '关闸'
+        return 'Close'
       }
       return action || '-'
+    },
+    formatSide(gateSide) {
+      if (gateSide === 'exit') {
+        return 'Exit'
+      }
+      if (gateSide === 'entry') {
+        return 'Entry'
+      }
+      return gateSide || '-'
     }
   }
 }
@@ -155,5 +270,9 @@ export default {
 <style scoped>
 .gate-form {
   margin-bottom: 20px;
+}
+
+.result-row {
+  margin-top: 20px;
 }
 </style>
