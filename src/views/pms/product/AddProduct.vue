@@ -166,9 +166,12 @@ export default {
           name: [
             { required: true, message: '请输入商品名称', trigger: 'blur' },
           ],
+          weight: [
+            { required: true, message: '请填写商品重量', trigger: 'blur' },
+          ],
        },
       form: {
-         publishStatus: 0,
+         publishStatus: 1,
          sort: 1000
       },
       skuAttr:[],
