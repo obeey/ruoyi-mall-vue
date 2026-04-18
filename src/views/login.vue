@@ -49,14 +49,14 @@
           <span v-if="!loading">登 录</span>
           <span v-else>登 录 中...</span>
         </el-button>
-        <el-button
+        <!-- <el-button
           :loading="loading"
           size="medium"
           type="primary"
           style="width:45%;"
           @click.native.prevent="handleTry"
         >
-          <span>获取体验账号</span>
+          <span>获取体验账号</span> -->
         </el-button>
         <div style="float: right;" v-if="register">
           <router-link class="link-type" :to="'/register'">立即注册</router-link>
