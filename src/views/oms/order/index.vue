@@ -14,6 +14,10 @@
         <el-input v-model.trim="queryParams.userPhone" placeholder="请输入会员手机号" clearable size="small"
                   @keyup.enter.native="handleQuery"/>
       </el-form-item>
+      <el-form-item label="会员ID" prop="memberId">
+        <el-input v-model.trim="queryParams.memberId" placeholder="请输入会员ID" clearable size="small"
+                  @keyup.enter.native="handleQuery"/>
+      </el-form-item>
       <el-form-item label="省市区" prop="provinces">
         <address-selector v-model="queryParams.provinces" size="small"></address-selector>
       </el-form-item>
@@ -342,6 +346,7 @@ export default {
         receiverDistrict: null,
         orderSn: null,
         productName: null,
+        memberId: null,
         userPhone: null,
         startTime: null,
         endTime: null
@@ -414,9 +419,12 @@ export default {
     const res = await isStarRepo('zccbbg', 'RuoYi-Mall', this.userId, 'https://mall.ichengle.top/order/order', 'ruoyi-mall-商城', 'https://gitee.com/zccbbg/RuoYi-Mall')
     this.show = res;
     if (res) {
-      const {phone, status, today} = this.$route.query
+      const {phone, memberId, status, today} = this.$route.query
       if (phone) {
         this.queryParams.userPhone = phone
+      }
+      if (memberId) {
+        this.queryParams.memberId = Number(memberId)
       }
       if (status) {
         this.queryParams.status = status

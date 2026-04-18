@@ -144,6 +144,7 @@ export default {
         pageNum: 1,
         pageSize: 10,
         productName: null,
+        memberId: null,
         phone: null
       },
       // 表单参数
@@ -151,9 +152,12 @@ export default {
     };
   },
   created() {
-    const { phone } = this.$route.query
+    const { phone, memberId } = this.$route.query
     if (phone){
       this.queryParams.phone = phone
+    }
+    if (memberId) {
+      this.queryParams.memberId = Number(memberId)
     }
     this.getList();
   },

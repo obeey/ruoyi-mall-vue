@@ -99,12 +99,12 @@
             <el-button
               size="mini"
               type="text"
-              @click="goOrder(scope.row.phoneEncrypted)"
+              @click="goOrder(scope.row.id)"
             >查看下单</el-button>
             <el-button
               size="mini"
               type="text"
-              @click="goCart(scope.row.phoneEncrypted)"
+              @click="goCart(scope.row.id)"
             >查看购物车</el-button>
           </template>
         </el-table-column>
@@ -142,7 +142,6 @@
 import {
   addUmsMember,
   changeAccountStatus,
-  decryptedPhone,
   delUmsMember,
   exportUmsMember,
   getUmsMember,
@@ -396,25 +395,26 @@ export default {
         }
       })
     },
-    goOrder(phone){
-      decryptedPhone(phone).then(res => {
-        this.$router.push({
-          path: '/order/order',
-          query: {
-            phone: res
-          }
-        })
+    hasMemberId(memberId) {
+      return memberId !== null && memberId !== undefined && memberId !== ''
+    },
+    jumpByMember(memberId, path, missingMessage) {
+      if (!this.hasMemberId(memberId)) {
+        this.$modal.msgWarning(missingMessage)
+        return
+      }
+      this.$router.push({
+        path,
+        query: {
+          memberId
+        }
       })
     },
-    goCart(phone){
-      decryptedPhone(phone).then(res => {
-        this.$router.push({
-          path: '/member/shoppingCart',
-          query: {
-            phone: res
-          }
-        })
-      })
+    goOrder(memberId){
+      this.jumpByMember(memberId, '/order/order', '该会员缺少会员ID，无法查看下单记录')
+    },
+    goCart(memberId){
+      this.jumpByMember(memberId, '/member/shoppingCart', '该会员缺少会员ID，无法查看购物车')
     },
     showStatistics(memberId){
       viewStatistics(memberId).then((response) => {
