@@ -118,11 +118,6 @@
                 </el-form-item>
               </template>
             </el-table-column>
-            <el-table-column label="库存">
-              <template #default="{ row }">
-                <el-input v-model="row.stock" type="number" />
-              </template>
-            </el-table-column>
             <el-table-column label="编码">
               <template #default="{ row }">
                 <el-form-item>
@@ -236,13 +231,13 @@ export default {
           it.outSkuId = sku.outSkuId
           it.price = sku.price
           it.pic = sku.pic
-          it.stock = sku.stock
+          it.stock = sku.stock || 0
           it.id = sku.id
         } else {
           it.outSkuId = null
           it.price = null
           it.pic = null
-          it.stock = null
+          it.stock = 0
           it.id = null
         }
       })

@@ -1,6 +1,6 @@
 <template>
   <div class="app-container">
-    <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" label-width="88px">
+    <el-form ref="queryForm" :model="queryParams" size="small" :inline="true" label-width="88px">
       <el-form-item label="设备ID" prop="deviceId">
         <el-input
           v-model.trim="queryParams.deviceId"
@@ -36,6 +36,12 @@
       <el-table-column label="设备ID" prop="deviceId" min-width="180" />
       <el-table-column label="店铺名称" prop="storeName" min-width="180" />
       <el-table-column label="状态" prop="statusText" width="90" />
+      <el-table-column label="货柜布局" min-width="180">
+        <template slot-scope="scope">
+          <div>{{ layoutText(scope.row.layoutSummary, 'shelfCount', '货架') }}</div>
+          <div class="sub-line">{{ layoutText(scope.row.layoutSummary, 'totalBoxes', '格口') }}</div>
+        </template>
+      </el-table-column>
       <el-table-column label="店长" min-width="180">
         <template slot-scope="scope">
           <div>{{ scope.row.managerNickname || '未分配' }}</div>
@@ -44,22 +50,31 @@
       </el-table-column>
       <el-table-column label="最近闸机上报" prop="lastDeviceReportTime" min-width="170" />
       <el-table-column label="备注" prop="remark" min-width="180" show-overflow-tooltip />
-      <el-table-column label="操作" align="center" width="220" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="280" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button
+            v-hasPermi="['ai:store:edit']"
             size="mini"
             type="text"
             icon="el-icon-edit"
-            v-hasPermi="['ai:store:edit']"
             @click="handleEdit(scope.row)"
           >
             编辑
           </el-button>
           <el-button
+            v-hasPermi="['ai:store:edit']"
+            size="mini"
+            type="text"
+            icon="el-icon-s-grid"
+            @click="handleLayout(scope.row)"
+          >
+            货柜布局
+          </el-button>
+          <el-button
+            v-hasPermi="['ai:store:assign']"
             size="mini"
             type="text"
             icon="el-icon-user"
-            v-hasPermi="['ai:store:assign']"
             @click="handleAssign(scope.row)"
           >
             分配店长
@@ -100,6 +115,82 @@
       </div>
     </el-dialog>
 
+    <el-dialog title="编辑货柜布局" :visible.sync="layoutOpen" width="1100px" append-to-body top="4vh">
+      <div v-loading="layoutLoading">
+        <div class="layout-head">
+          <div>
+            <div class="layout-title">{{ layoutForm.storeName || '未命名店铺' }}</div>
+            <div class="sub-line">{{ layoutForm.deviceId || '' }}</div>
+          </div>
+          <div class="layout-summary">
+            <el-tag size="small" effect="plain">{{ layoutSummaryText('shelfCount', '货架') }}</el-tag>
+            <el-tag size="small" effect="plain">{{ layoutSummaryText('totalLayers', '层') }}</el-tag>
+            <el-tag size="small" effect="plain">{{ layoutSummaryText('totalBoxes', '格口') }}</el-tag>
+          </div>
+        </div>
+
+        <div class="layout-actions">
+          <el-button size="mini" type="primary" plain icon="el-icon-plus" @click="addShelf">新增货架</el-button>
+        </div>
+
+        <div v-if="layoutForm.shelves.length" class="layout-editor">
+          <div v-for="(shelf, shelfIndex) in layoutForm.shelves" :key="shelf.localKey" class="shelf-card">
+            <div class="shelf-header">
+              <div class="shelf-title">
+                <el-input v-model.trim="shelf.shelfName" size="mini" placeholder="货架名称" />
+                <el-input v-model.trim="shelf.weighIp" size="mini" placeholder="称重IP，如 192.168.1.131" />
+                <span class="sub-line">共 {{ shelf.layers.length }} 层 / {{ shelfBoxCount(shelf) }} 个格口</span>
+              </div>
+              <div>
+                <el-button size="mini" type="text" icon="el-icon-plus" @click="addLayer(shelf)">增加层</el-button>
+                <el-button
+                  size="mini"
+                  type="text"
+                  icon="el-icon-delete"
+                  class="danger-text"
+                  @click="removeShelf(shelfIndex)"
+                >
+                  删除货架
+                </el-button>
+              </div>
+            </div>
+
+            <div v-for="(layer, layerIndex) in shelf.layers" :key="layer.localKey" class="layer-row">
+              <div class="layer-meta">
+                <span class="layer-name">第 {{ layerIndex + 1 }} 层</span>
+                <el-input-number
+                  v-model="layer.boxCount"
+                  size="mini"
+                  :min="1"
+                  :max="20"
+                  @change="syncLayoutSummary"
+                />
+                <el-button
+                  size="mini"
+                  type="text"
+                  class="danger-text"
+                  @click="removeLayer(shelf, layerIndex)"
+                >
+                  删除本层
+                </el-button>
+              </div>
+              <div class="box-preview">
+                <div v-for="boxNo in layer.boxCount" :key="boxNo" class="box-cell">
+                  {{ shelfIndex + 1 }}-{{ layerIndex + 1 }}-{{ boxNo }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <el-empty v-else description="当前还没有货架，请先新增货架" :image-size="90" />
+      </div>
+
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="layoutOpen = false">取 消</el-button>
+        <el-button type="primary" @click="submitLayout">保 存 布 局</el-button>
+      </div>
+    </el-dialog>
+
     <el-dialog title="分配店长" :visible.sync="assignOpen" width="760px" append-to-body>
       <el-form :inline="true" size="small" class="assign-filter">
         <el-form-item label="候选搜索">
@@ -115,10 +206,10 @@
         </el-form-item>
       </el-form>
 
-      <el-table v-loading="candidateLoading" :data="candidateList" @current-change="handleCandidateSelect" highlight-current-row>
+      <el-table v-loading="candidateLoading" :data="candidateList" highlight-current-row @current-change="handleCandidateSelect">
         <el-table-column width="55">
           <template slot-scope="scope">
-            <el-radio :label="scope.row.memberId" v-model="assignForm.managerMemberId">{{ '' }}</el-radio>
+            <el-radio v-model="assignForm.managerMemberId" :label="scope.row.memberId">{{ '' }}</el-radio>
           </template>
         </el-table-column>
         <el-table-column label="会员ID" prop="memberId" width="90" />
@@ -141,10 +232,14 @@
 import {
   assignStoreManager,
   getAiStore,
+  getAiStoreLayout,
   listAiStore,
   listManagerCandidates,
-  updateAiStore
+  updateAiStore,
+  updateAiStoreLayout
 } from '@/api/ai/store'
+
+let layoutSeed = 1
 
 export default {
   name: 'AiStoreIndex',
@@ -152,7 +247,9 @@ export default {
     return {
       loading: false,
       candidateLoading: false,
+      layoutLoading: false,
       editOpen: false,
+      layoutOpen: false,
       assignOpen: false,
       total: 0,
       storeList: [],
@@ -172,6 +269,13 @@ export default {
         status: 1,
         remark: ''
       },
+      layoutForm: {
+        storeId: undefined,
+        storeName: '',
+        deviceId: '',
+        shelves: [],
+        summary: {}
+      },
       assignForm: {
         storeId: undefined,
         managerMemberId: undefined
@@ -187,6 +291,10 @@ export default {
     this.getList()
   },
   methods: {
+    nextLayoutKey(prefix) {
+      layoutSeed += 1
+      return `${prefix}-${layoutSeed}`
+    },
     getList() {
       this.loading = true
       listAiStore(this.queryParams, {
@@ -206,6 +314,16 @@ export default {
     resetQuery() {
       this.resetForm('queryForm')
       this.handleQuery()
+    },
+    layoutText(summary, key, suffix) {
+      const value = summary && summary[key] !== undefined ? summary[key] : 0
+      return `${value} ${suffix}`
+    },
+    layoutSummaryText(key, suffix) {
+      return this.layoutText(this.layoutForm.summary, key, suffix)
+    },
+    shelfBoxCount(shelf) {
+      return (shelf.layers || []).reduce((total, layer) => total + Number(layer.boxCount || 0), 0)
     },
     handleEdit(row) {
       getAiStore(row.id).then(response => {
@@ -229,6 +347,101 @@ export default {
           this.editOpen = false
           this.getList()
         })
+      })
+    },
+    handleLayout(row) {
+      this.layoutLoading = true
+      getAiStoreLayout(row.id).then(response => {
+        const layoutConfig = response.layoutConfig || {}
+        const shelves = (layoutConfig.shelves || []).map((shelf, shelfIndex) => ({
+          localKey: this.nextLayoutKey('shelf'),
+          shelfName: shelf.shelfName || `${shelfIndex + 1}号货架`,
+          weighIp: shelf.weighIp || '',
+          layers: (shelf.layers || []).map((layer) => ({
+            localKey: this.nextLayoutKey('layer'),
+            boxCount: Number(layer.boxCount || 1)
+          }))
+        }))
+        this.layoutForm = {
+          storeId: response.storeId,
+          storeName: response.storeName,
+          deviceId: response.deviceId,
+          shelves: shelves.length ? shelves : [this.createShelf()],
+          summary: response.layoutSummary || {}
+        }
+        this.syncLayoutSummary()
+        this.layoutOpen = true
+      }).finally(() => {
+        this.layoutLoading = false
+      })
+    },
+    createLayer(boxCount = 4) {
+      return {
+        localKey: this.nextLayoutKey('layer'),
+        boxCount
+      }
+    },
+    createShelf() {
+      return {
+        localKey: this.nextLayoutKey('shelf'),
+        shelfName: `${(this.layoutForm.shelves || []).length + 1}号货架`,
+        weighIp: '',
+        layers: [this.createLayer(), this.createLayer(), this.createLayer()]
+      }
+    },
+    addShelf() {
+      this.layoutForm.shelves.push(this.createShelf())
+      this.syncLayoutSummary()
+    },
+    removeShelf(index) {
+      this.layoutForm.shelves.splice(index, 1)
+      if (!this.layoutForm.shelves.length) {
+        this.layoutForm.shelves.push(this.createShelf())
+      }
+      this.syncLayoutSummary()
+    },
+    addLayer(shelf) {
+      shelf.layers.push(this.createLayer())
+      this.syncLayoutSummary()
+    },
+    removeLayer(shelf, layerIndex) {
+      shelf.layers.splice(layerIndex, 1)
+      if (!shelf.layers.length) {
+        shelf.layers.push(this.createLayer())
+      }
+      this.syncLayoutSummary()
+    },
+    syncLayoutSummary() {
+      let totalLayers = 0
+      let totalBoxes = 0
+      this.layoutForm.shelves.forEach(shelf => {
+        totalLayers += shelf.layers.length
+        totalBoxes += this.shelfBoxCount(shelf)
+      })
+      this.layoutForm.summary = {
+        shelfCount: this.layoutForm.shelves.length,
+        totalLayers,
+        totalBoxes
+      }
+    },
+    submitLayout() {
+      const shelves = this.layoutForm.shelves.map((shelf, shelfIndex) => ({
+        shelfNo: shelfIndex + 1,
+        shelfName: shelf.shelfName || `${shelfIndex + 1}号货架`,
+        weighIp: shelf.weighIp || '',
+        layers: shelf.layers.map((layer, layerIndex) => ({
+          layerNo: layerIndex + 1,
+          boxCount: Number(layer.boxCount || 1)
+        }))
+      }))
+      updateAiStoreLayout(this.layoutForm.storeId, {
+        layoutConfig: {
+          shelves
+        }
+      }).then(() => {
+        this.$modal.msgSuccess('货柜布局已保存')
+        this.layoutOpen = false
+        this.getList()
       })
     },
     handleAssign(row) {
@@ -273,5 +486,97 @@ export default {
 
 .assign-filter {
   margin-bottom: 12px;
+}
+
+.layout-head,
+.shelf-header,
+.layer-meta,
+.layout-summary {
+  display: flex;
+  align-items: center;
+}
+
+.layout-head,
+.shelf-header {
+  justify-content: space-between;
+}
+
+.layout-head {
+  margin-bottom: 16px;
+}
+
+.layout-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.layout-summary {
+  gap: 8px;
+}
+
+.layout-actions {
+  margin-bottom: 12px;
+}
+
+.layout-editor {
+  max-height: 64vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.shelf-card {
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #fff;
+}
+
+.shelf-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shelf-title .el-input {
+  width: 180px;
+}
+
+.layer-row {
+  padding: 14px 0;
+  border-top: 1px dashed #ebeef5;
+}
+
+.layer-meta {
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.layer-name {
+  min-width: 60px;
+  color: #303133;
+  font-weight: 500;
+}
+
+.box-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 10px;
+}
+
+.box-cell {
+  height: 56px;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.danger-text {
+  color: #f56c6c;
 }
 </style>

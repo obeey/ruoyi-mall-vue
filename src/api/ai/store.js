@@ -24,6 +24,21 @@ export function updateAiStore(data) {
   })
 }
 
+export function getAiStoreLayout(id) {
+  return request({
+    url: `/ai/store/${id}/layout`,
+    method: 'get'
+  })
+}
+
+export function updateAiStoreLayout(id, data) {
+  return request({
+    url: `/ai/store/${id}/layout`,
+    method: 'put',
+    data
+  })
+}
+
 export function listManagerCandidates(keyword) {
   return request({
     url: '/ai/store/managerCandidates',
